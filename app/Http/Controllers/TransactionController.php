@@ -9,6 +9,7 @@ use App\Models\Status;
 use App\Models\Transaction;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Str;
 use OpenSpout\Common\Entity\Row;
 use OpenSpout\Writer\XLSX\Options;
 use OpenSpout\Writer\XLSX\Writer;
@@ -94,56 +95,54 @@ class TransactionController extends Controller
     {
         $validation = $request->validate($this->filterRules());
 
+        set_time_limit(0);
+
         $categories = Category::pluck('name', 'id')->all();
         $statuses = Status::pluck('name', 'id')->all();
 
         $dataTransaction = $this->exportQuery($validation);
 
+        $tempFolder = storage_path('app/private/exports/tmp');
+        File::ensureDirectoryExists($tempFolder);
+
+        $filePath = storage_path('app/private/exports/'.Str::uuid7().'.xlsx');
         $fileName = 'transactions_'.now()->format('Ymd_His').'.xlsx';
+        $header = ['No. Referensi', 'Tanggal Transaksi', 'Kategori', 'Status', 'Metode Pembayaran', 'Amount', 'Deskripsi'];
 
-        return response()->streamDownload(function () use ($dataTransaction, $categories, $statuses) {
-            set_time_limit(0);
+        $writer = new Writer(new Options(tempFolder: $tempFolder));
+        $writer->openToFile($filePath);
+        $writer->getCurrentSheet()->setName('Transaksi 1');
+        $writer->addRow(Row::fromValues($header));
 
-            $header = ['No. Referensi', 'Tanggal Transaksi', 'Kategori', 'Status', 'Metode Pembayaran', 'Amount', 'Deskripsi'];
+        $rowsInSheet = 0;
+        $sheetNumber = 1;
 
-            $tempFolder = storage_path('app/private/exports/tmp');
-            File::ensureDirectoryExists($tempFolder);
+        foreach ($dataTransaction->lazyById(5000) as $row) {
+            if ($rowsInSheet === self::EXCEL_ROWS_PER_SHEET) {
+                $sheetNumber++;
 
-            $writer = new Writer(new Options(tempFolder: $tempFolder));
-            $writer->openToFile('php://output');
-            $writer->getCurrentSheet()->setName('Transaksi 1');
-            $writer->addRow(Row::fromValues($header));
+                $writer->addNewSheetAndMakeItCurrent()->setName("Transaksi {$sheetNumber}");
+                $writer->addRow(Row::fromValues($header));
 
-            $rowsInSheet = 0;
-            $sheetNumber = 1;
-
-            foreach ($dataTransaction->lazyById(5000) as $row) {
-                if ($rowsInSheet === self::EXCEL_ROWS_PER_SHEET) {
-                    $sheetNumber++;
-
-                    $writer->addNewSheetAndMakeItCurrent()->setName("Transaksi {$sheetNumber}");
-                    $writer->addRow(Row::fromValues($header));
-
-                    $rowsInSheet = 0;
-                }
-
-                $writer->addRow(Row::fromValues([
-                    $row->reference_no,
-                    $row->transaction_date,
-                    $categories[$row->category_id] ?? '',
-                    $statuses[$row->status_id] ?? '',
-                    $row->payment_method,
-                    (float) $row->amount,
-                    $row->description,
-                ]));
-
-                $rowsInSheet++;
+                $rowsInSheet = 0;
             }
 
-            $writer->close();
-        }, $fileName, [
-            'Content-Type' => 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        ]);
+            $writer->addRow(Row::fromValues([
+                $row->reference_no,
+                $row->transaction_date,
+                $categories[$row->category_id] ?? '',
+                $statuses[$row->status_id] ?? '',
+                $row->payment_method,
+                (float) $row->amount,
+                $row->description,
+            ]));
+
+            $rowsInSheet++;
+        }
+
+        $writer->close();
+
+        return response()->download($filePath, $fileName)->deleteFileAfterSend();
     }
 
     private function exportQuery(array $filters)
