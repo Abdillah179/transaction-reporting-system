@@ -14,7 +14,6 @@ class UserSeeder extends Seeder
 
         User::upsert([
             ['email' => 'demo1@example.com', 'name' => 'Demo User 1', 'email_verified_at' => now(), 'password' => $password],
-            ['email' => 'demo2@example.com', 'name' => 'Demo User 2', 'email_verified_at' => now(), 'password' => $password],
         ], ['email'], ['name', 'email_verified_at', 'password']);
     }
 }

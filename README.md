@@ -71,7 +71,6 @@ Import diproses oleh queue worker. Tanpa worker, import akan tertahan di status 
 | Email | Password |
 |---|---|
 | demo1@example.com | password |
-| demo2@example.com | password |
 
 ### Membuat data uji
 
