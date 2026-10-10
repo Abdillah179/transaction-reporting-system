@@ -1,0 +1,43 @@
+@extends('Layouts.App')
+
+@section('content')
+    <div class="row justify-content-center">
+        <div class="col-md-8 col-lg-6">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 mb-0">Edit Category</h1>
+                <a href="/Category" class="btn btn-outline-secondary btn-sm">Kembali</a>
+            </div>
+
+            <div class="card">
+                <div class="card-body">
+                    <form method="POST" action="/postupdatecategory/{{ $detailData->uuid }}">
+                        @csrf
+                        @method('PATCH')
+
+                        <div class="mb-3">
+                            <label for="code" class="form-label">Kode</label>
+                            <input type="text" id="code" name="code" value="{{ old('code', $detailData->code) }}"
+                                maxlength="30" class="form-control @error('code') is-invalid @enderror" required autofocus>
+                            <div class="form-text">Huruf kecil tanpa spasi.</div>
+                            @error('code')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <div class="mb-3">
+                            <label for="name" class="form-label">Nama</label>
+                            <input type="text" id="name" name="name" value="{{ old('name', $detailData->name) }}"
+                                maxlength="50" class="form-control @error('name') is-invalid @enderror" required>
+                            @error('name')
+                                <div class="invalid-feedback">{{ $message }}</div>
+                            @enderror
+                        </div>
+
+                        <button type="submit" class="btn btn-primary">Simpan Perubahan</button>
+                        <a href="/Category" class="btn btn-outline-secondary">Batal</a>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+@endsection
